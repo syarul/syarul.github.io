@@ -68,16 +68,18 @@ view
   .register('app')
   .set('{{container}}')
   .set({'css-padding-top': '20px'})
-
+var log = console.log.bind(console)
+const isHomePage = window.location.href.match('#')
 const url = window.location.href.split('#')[1]
 const idx = data.map(x => x.url).indexOf(url)
-
+const redirect = isHomePage ? idx : 0
+log(isHomePage)
 const container = new Krom
 
-// show data base on url, if does not exist return 404 page
+// show data base on url, if it does not found the hashbang return to homepage else return 404 page
 container
   .register('view')
-  .set(getData(idx))
+  .set(getData(redirect))
 
 function getData(index){
   let d = index === -1 ? data[3].data : data[index].data
