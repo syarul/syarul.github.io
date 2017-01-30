@@ -66,12 +66,14 @@ const view = new Krom
 view
   .template('<div id="view"></div>')
   .register('app')
-  .set('{{container}}')
-  .set({'css-padding-top': '20px'})
+  .set({
+    value: '{{container}}',
+    'css-padding-top': '20px'
+  })
 
 const isHomePage = window.location.href.match('#')
 const url = window.location.href.split('#')[1]
-const idx = data.map(x => x.url).indexOf(url)
+const idx = data.map(d => d.url).indexOf(url)
 const redirect = isHomePage ? idx : 0
 
 const container = new Krom
@@ -97,7 +99,7 @@ function updateView(index){
 }
 
 // if user click back/foward, update the page as well
-window.onpopstate = function() {
+window.onpopstate = () => {
   let url = document.location.href.split('#')[1]
   let idx = data.map(x => x.url).indexOf(url)
   container.set(getData(idx))

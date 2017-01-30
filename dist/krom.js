@@ -1,6 +1,6 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Krom = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** 
- * Krom.js v0.1.3 (Alpha) version: https://github.com/syarul/krom
+ * Krom.js v0.2.0 (Alpha) version: https://github.com/syarul/krom
  * A data-driven view, OO, pure js without new paradigm shift
  *
  * <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Krom.js >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -26,6 +26,7 @@ function Krom() {
   }())
 
   this.ctor.tags = {}
+  this.ctor.ops = {}
 
   var camelCase = function(s) {
     var rx = /\-([a-z])/g
@@ -90,12 +91,22 @@ function Krom() {
 
   var _triggerElem = function() {
     var o = ctx.obs._state_, c = ctx._linkElem, processStr,
-      ele = getId(c), t = ctx.ctor.tags, i
+      ele = getId(c), t = ctx.ctor.tags, i, tempDiv
     if (ele) {
       // process each {{instance}} before parsing to html
       processStr = _processTags(o.value)
       // parsing string to DOM only when necessary
-      if (processStr && o.value.length) ele.innerHTML = processStr
+      if(ctx.ctor.ops.preserve === true && ele.hasChildNodes()) {
+        if(ctx.ctor.ops.type === 'remove'){
+          ele.removeChild(ele.childNodes[ctx.ctor.ops.index])
+        } else {
+          tempDiv = document.createElement('div')
+          tempDiv.innerHTML = ctx.ctor.ops.node
+          ele.appendChild(tempDiv.childNodes[0])
+          tempDiv = null
+        }
+      }
+      else if (processStr && o.value.length) ele.innerHTML = processStr
       else if (!processStr && o.value.length < 1) ele.innerHTML = ''
       // attributes class and style
       applyAttrib(c, o)
@@ -203,9 +214,10 @@ Krom.prototype.link = function(id, value, vProp) {
  * Set value for this component instance from an array of objects
  * @param {object} - instance of the array
  * @param {string} - the template string i.e ```<li>{{index}} name:{{name}} age:{{age}}</li>```. Each handlebar is the reference to attribute in the ***array*** objects
+ * @param {boolean} - this value assign programmatically by this Instance prototype insert, avoid declaring this parameter
  * @returns {context}
  */
-Krom.prototype.array = function(array, templateString) {
+Krom.prototype.array = function(array, templateString, isAppend) {
   var tmplStr = '', arrProps, tmpl, rep
   this.ctor.arrayProto = array
   this.ctor.tmplString = templateString
@@ -218,7 +230,11 @@ Krom.prototype.array = function(array, templateString) {
     })
     tmplStr += tmpl
   })
-  this.set(tmplStr)
+  if(isAppend){
+    this.ctor.ops.node = tmplStr
+  } else {
+    this.set(tmplStr)
+  }
   return this
 }
 /**
@@ -239,7 +255,15 @@ Krom.prototype.remove = function(obj, fn) {
       return f[attr]
     }).indexOf(value)
     if(~idx) arr.splice(idx, 1)
-    if(typeof fn === 'function') arr = fn(arr)
+    this.ctor.ops = {
+      preserve: true,
+      type: 'remove',
+      index: idx
+    }
+    if(typeof fn === 'function') {
+      arr = fn(arr)
+      this.ctor.ops.preserve = false
+    } 
     this.array(arr, str)
   } else {
     throw('object reference not created from array.')
@@ -256,7 +280,18 @@ Krom.prototype.insert = function(obj, fn) {
   var arr = this.ctor.arrayProto, str = this.ctor.tmplString
   if(Array.isArray(arr)){
     arr.push(obj)
-    if(typeof fn === 'function') arr = fn(arr)
+    this.ctor.ops = {
+      preserve: true,
+      type: 'append',
+      index: null,
+      node: ''
+    }
+    if(typeof fn === 'function') {
+      arr = fn(arr)
+      this.ctor.ops.preserve = false
+    } else {
+      this.array([obj], str, true)
+    }
     this.array(arr, str)
   } else {
     throw('object reference not created from array.')
