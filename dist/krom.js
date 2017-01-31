@@ -1,6 +1,6 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Krom = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** 
- * Krom.js v0.3.0 (Alpha) version: https://github.com/syarul/krom
+ * Krom.js v0.3.1 (Alpha) version: https://github.com/syarul/krom
  * A data-driven view, OO, pure js without new paradigm shift
  *
  * <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Krom.js >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -55,7 +55,8 @@ function Krom() {
           // handle child tag
           childAttr = {
             el: child._linkElem,
-            state: child.obs._state_
+            state: child.obs._state_,
+            preserveAttr: child.ctor.preserveAttr
           }
           ctx.ctor.tags[regc] = childAttr
           // inject value into child template
@@ -75,7 +76,7 @@ function Krom() {
     }
   }
 
-  var applyAttrib = function(selector, state) {
+  var applyAttrib = function(selector, state, preserveAttr) {
     var cty, attr, ts, type
     for (attr in state) {
       ts = new RegExp('-')
@@ -87,11 +88,15 @@ function Krom() {
           getId(selector).setAttribute(type[1], state[attr])
         } else if (type[0] === 'css') {
           cty = camelCase(attr.substring(4))
-          if(ctx.ctor.css[cty] !== state[attr]){
+          if (ctx.ctor.css[cty] !== state[attr]) {
             // store css if same as last time don't mutate it
             ctx.ctor.css[cty] = state[attr]
             getId(selector).style[cty] = state[attr]
+          } else if (preserveAttr) {
+            getId(selector).style[cty] = state[attr]
           }
+        } else if (type[0] === 'attr' && preserveAttr) {
+          getId(selector).setAttribute(type[1], state[attr])
         }
       }
     }
@@ -119,7 +124,7 @@ function Krom() {
       // attributes class and style
       applyAttrib(el, state)
       // if child ctor exist apply the attributes to child tags
-      for (attr in childTags) applyAttrib(childTags[attr].el, childTags[attr].state)
+      for (attr in childTags) applyAttrib(childTags[attr].el, childTags[attr].state, childTags[attr].preserveAttr)
     }
   }
 
@@ -196,6 +201,15 @@ Krom.prototype.compose = function(fn) {
   } else {
     this.obs._state_ = c
   }
+  return this
+}
+/**
+ * Persist this instance state attributes and style regardless parent instance mutation
+ * @param {boolean} - ***optional*** undo the persistance changes
+ * @returns {context}
+ */
+Krom.prototype.preserve = function(argv) {
+  this.ctor.preserveAttr = argv ? false : true
   return this
 }
 /**
