@@ -51,7 +51,6 @@ app
 const menu = new Krom
 
 menu.template('<ul id="menu"></ul>')
-  .register('app')
   .array(_data, '<li style="padding:0 10px 0 10px"><a href="#{{url}}" onclick="updateView({{id}})">{{index}}</a></li>')
   .set({
     'css-list-style-type': 'none',
@@ -65,11 +64,12 @@ const view = new Krom
 
 view
   .template('<div id="view"></div>')
-  .register('app')
   .set({
     value: '{{container}}',
     'css-padding-top': '20px'
   })
+
+app.compose()
 
 const isHomePage = window.location.href.match('#')
 const url = window.location.href.split('#')[1]

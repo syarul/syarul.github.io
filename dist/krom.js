@@ -1,6 +1,6 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Krom = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /** 
- * Krom.js v0.2.0 (Alpha) version: https://github.com/syarul/krom
+ * Krom.js v0.3.0 (Alpha) version: https://github.com/syarul/krom
  * A data-driven view, OO, pure js without new paradigm shift
  *
  * <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Krom.js >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -25,7 +25,9 @@ function Krom() {
     return typeof document == 'object' ? true : false
   }())
 
+  this.ctor.attr = {}
   this.ctor.tags = {}
+  this.ctor.css = {}
   this.ctor.ops = {}
 
   var camelCase = function(s) {
@@ -52,7 +54,7 @@ function Krom() {
         if(child){
           // handle child tag
           childAttr = {
-            selector: child._linkElem,
+            el: child._linkElem,
             state: child.obs._state_
           }
           ctx.ctor.tags[regc] = childAttr
@@ -73,28 +75,34 @@ function Krom() {
     }
   }
 
-  var applyAttrib = function(selector, o) {
+  var applyAttrib = function(selector, state) {
     var cty, attr, ts, type
-    for (attr in o) {
+    for (attr in state) {
       ts = new RegExp('-')
       if (attr.match(ts)) {
         type = attr.split('-')
-        if (type[0] === 'attr') {
-          getId(selector).setAttribute(type[1], o[attr])
+        if (type[0] === 'attr' && ctx.ctor.attr[type[1]] !== state[attr]) {
+          // store attr if same as last time don't mutate it
+          ctx.ctor.attr[type[1]] = state[attr]
+          getId(selector).setAttribute(type[1], state[attr])
         } else if (type[0] === 'css') {
           cty = camelCase(attr.substring(4))
-          getId(selector).style[cty] = o[attr]
+          if(ctx.ctor.css[cty] !== state[attr]){
+            // store css if same as last time don't mutate it
+            ctx.ctor.css[cty] = state[attr]
+            getId(selector).style[cty] = state[attr]
+          }
         }
       }
     }
   }
 
   var _triggerElem = function() {
-    var o = ctx.obs._state_, c = ctx._linkElem, processStr,
-      ele = getId(c), t = ctx.ctor.tags, i, tempDiv
+    var state = ctx.obs._state_, el = ctx._linkElem, processStr,
+      ele = getId(el), childTags = ctx.ctor.tags, attr, tempDiv
     if (ele) {
       // process each {{instance}} before parsing to html
-      processStr = _processTags(o.value)
+      processStr = _processTags(state.value)
       // parsing string to DOM only when necessary
       if(ctx.ctor.ops.preserve === true && ele.hasChildNodes()) {
         if(ctx.ctor.ops.type === 'remove'){
@@ -106,12 +114,12 @@ function Krom() {
           tempDiv = null
         }
       }
-      else if (processStr && o.value.length) ele.innerHTML = processStr
-      else if (!processStr && o.value.length < 1) ele.innerHTML = ''
+      else if (processStr && state.value.length) ele.innerHTML = processStr
+      else if (!processStr && state.value.length < 1) ele.innerHTML = ''
       // attributes class and style
-      applyAttrib(c, o)
+      applyAttrib(el, state)
       // if child ctor exist apply the attributes to child tags
-      for (i in t) applyAttrib(t[i].selector, t[i].state)
+      for (attr in childTags) applyAttrib(childTags[attr].el, childTags[attr].state)
     }
   }
 
@@ -139,7 +147,9 @@ function Krom() {
 }
 /**
  * Register this component instance as a child of a parent component i.e ```<div>{{childComponent}}</div>```.
- * Updates on child are automatically updated to parent whenever the child called ```set/compose/link```
+ * Updates on child are automatically updated to parent whenever the child called ```set/compose/link```.
+ * **Be carefull using this**, since mutation is not control anymore. If you want to have control over 
+ * DOM mutation use ```Krom.prototype.compose``` instead. 
  * @param {string} - the parent component instance declared variable name. 
  * @returns {context}
  */
