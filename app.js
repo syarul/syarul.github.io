@@ -22,7 +22,7 @@ let data = [{
   url: '/resource',
   data: {
     title: 'Resources',
-    desc: 'For more info visit <a href="https://github.com/syarul/krom">https://github.com/syarul/krom</a>',
+    desc: 'For more info visit <a href="https://github.com/syarul/Keet">https://github.com/syarul/Keet</a>',
     link: 'Contact us'
   }
 }, {
@@ -35,23 +35,44 @@ let data = [{
     link: 'Contact us'
   }
 }]
-
 let _data = data.map(x => x)
 _data.pop()
 
-const app = new Krom
+const keet = (tag, debug) => debug ? new Keet(tag, true) : new Keet(null, false)
+const tag = keet().tag // helper function, write element without writing brackets
+const cat = keet().cat // helper function to concat string, function() { return [].slice.call(arguments).join('') }
 
-app
-  .link('app', '<img src="./k.jpg"><h1>Krom.js</h1>{{menu}}{{view}}') // mind the temporary logo :))
+const model = {}  //object container for the all the components
+
+const component = ['app', 'menu', 'view', 'container']
+
+component.map(c => model[c] = keet())
+
+model.app
+  .link('app', cat(tag('img', null, {src: './res/k.jpg'}), tag('h1', 'Keet.js'), '{{model.menu}}{{model.view}}'))
   .set({
     'css-text-align': 'center',
     'css-margin-top': '20px'
   })
 
-const menu = new Krom
-
-menu.template('<ul id="menu"></ul>')
-  .array(_data, '<li style="padding:0 10px 0 10px"><a href="#{{url}}" onclick="updateView({{id}})">{{index}}</a></li>')
+model.menu.template('ul', 'menu')
+  .array(
+    _data,
+    tag(
+      'li',
+      tag(
+        'a',
+        '{{index}}', 
+        {
+          href: '#{{url}}',
+          onclick: 'updateView({{id}})'
+        }
+      ),
+      null, {
+        padding: '0 10px 0 10px'
+      }
+    )
+  )
   .set({
     'css-list-style-type': 'none',
     'css-display': 'inline-flex',
@@ -60,27 +81,23 @@ menu.template('<ul id="menu"></ul>')
     'css-padding': 0
   })
 
-const view = new Krom
-
-view
-  .template('<div id="view"></div>')
+model.view
+  .template('div', 'view')
   .set({
-    value: '{{container}}',
+    value: '{{model.container}}',
     'css-padding-top': '20px'
   })
 
-app.compose()
+model.app.compose()
 
 const isHomePage = window.location.href.match('#')
 const url = window.location.href.split('#')[1]
 const idx = data.map(d => d.url).indexOf(url)
 const redirect = isHomePage ? idx : 0
 
-const container = new Krom
-
 // show data base on url, if it does not found the hashbang return to homepage else return 404 page
-container
-  .register('view')
+model.container
+  .register('model.view')
   .set(getData(redirect))
 
 function getData(index){
@@ -95,12 +112,12 @@ function getData(index){
 
 // update page on user clicking menu link
 function updateView(index){
-  container.set(getData(index))
+  model.container.set(getData(index))
 }
 
-// if user click back/foward, update the page as well
+// // if user click back/foward, update the page as well
 window.onpopstate = () => {
   let url = document.location.href.split('#')[1]
   let idx = data.map(x => x.url).indexOf(url)
-  container.set(getData(idx))
+  model.container.set(getData(idx))
 }
